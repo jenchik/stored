@@ -18,10 +18,10 @@ func newMultiMap(instances uint64, factory api.StoredCopier) api.StoredMap {
 		factory:   factory,
 		instances: instances,
 	}
-	for i:= uint64(0); i < instances; i++ {
+	for i := uint64(0); i < instances; i++ {
 		sm.maps[i] = sm.factory.Copy()
 	}
-    return sm
+	return sm
 }
 
 func New(instances int, factory api.StoredCopier) api.StoredMap {

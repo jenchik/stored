@@ -6,39 +6,39 @@ import (
 )
 
 type commandData struct {
-    action    commandAction
-    key       string
-    value     interface{}
-    result    chan<- interface{}
-    data      chan<- map[string]interface{}
-    updater   api.UpdateFunc
-	foreach	  api.ForeachFunc
-	fatomic   api.AtomicFunc
+	action  commandAction
+	key     string
+	value   interface{}
+	result  chan<- interface{}
+	data    chan<- map[string]interface{}
+	updater api.UpdateFunc
+	foreach api.ForeachFunc
+	fatomic api.AtomicFunc
 }
 
 type commandAction int
 
 const (
-    remove commandAction = iota
-    insert
-    update
+	remove commandAction = iota
+	insert
+	update
 	each
 	atomic
 	atomicWait
 )
 
 type findResult struct {
-    value interface{}
-    found bool
+	value interface{}
+	found bool
 }
 
 type mapItem struct {
-	sm      *safeMap
-    key     string
-    value   interface{}
-	stop	bool
-	lock	int // 0 - no; 1 - write/read; >1 - read; <0 - disabled
-	mux     sync.RWMutex
+	sm    *safeMap
+	key   string
+	value interface{}
+	stop  bool
+	lock  int // 0 - no; 1 - write/read; >1 - read; <0 - disabled
+	mux   sync.RWMutex
 }
 
 func newMapper(sm *safeMap) *mapItem {
@@ -132,19 +132,19 @@ func (m *mapItem) Close() {
 }
 
 type safeMap struct {
-    store map[string]interface{}
+	store map[string]interface{}
 	c     chan commandData
 	m     *sync.RWMutex
 }
 
 func New() api.StoredMap {
-    sm := safeMap{
-	    store : make(map[string]interface{}),
-		c: make(chan commandData),
-		m: new(sync.RWMutex),
+	sm := safeMap{
+		store: make(map[string]interface{}),
+		c:     make(chan commandData),
+		m:     new(sync.RWMutex),
 	}
-    go sm.run()
-    return &sm
+	go sm.run()
+	return &sm
 }
 
 func safeAtomic(m *mapItem, f api.AtomicFunc) {
@@ -157,26 +157,26 @@ func safeAtomic(m *mapItem, f api.AtomicFunc) {
 }
 
 func (sm *safeMap) run() {
-    for command := range sm.c {
-        switch command.action {
-        case atomic:
+	for command := range sm.c {
+		switch command.action {
+		case atomic:
 			if command.fatomic != nil {
 				mapper := newMapper(sm)
 				safeAtomic(mapper, command.fatomic)
 			}
-        case atomicWait:
+		case atomicWait:
 			if command.fatomic != nil {
 				mapper := newMapper(sm)
 				safeAtomic(mapper, command.fatomic)
 			}
 			command.result <- struct{}{}
-        case insert:
+		case insert:
 			sm.m.Lock()
-           	sm.store[command.key] = command.value
+			sm.store[command.key] = command.value
 			sm.m.Unlock()
-        case remove:
+		case remove:
 			sm.m.Lock()
-           	delete(sm.store, command.key)
+			delete(sm.store, command.key)
 			sm.m.Unlock()
 		case each:
 			mapper := newMapper(sm)
@@ -188,13 +188,13 @@ func (sm *safeMap) run() {
 					break
 				}
 			}
-        case update:
-            value, found := sm.store[command.key]
+		case update:
+			value, found := sm.store[command.key]
 			sm.m.Lock()
-            sm.store[command.key] = command.updater(value, found)
+			sm.store[command.key] = command.updater(value, found)
 			sm.m.Unlock()
-        }
-    }
+		}
+	}
 }
 
 func (sm *safeMap) Atomic(f api.AtomicFunc) {
@@ -233,9 +233,9 @@ func (sm *safeMap) Update(key string, updater api.UpdateFunc) {
 }
 
 func (sm *safeMap) Each(f api.ForeachFunc) {
-    sm.c <- commandData{action: each, foreach: f}
+	sm.c <- commandData{action: each, foreach: f}
 }
 
-func (sm *safeMap) Copy() api.StoredMap{
+func (sm *safeMap) Copy() api.StoredMap {
 	return New()
 }

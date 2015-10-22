@@ -16,21 +16,21 @@ type Mapper interface {
 	Lock()
 	Unlock()
 	Stop()
-    Clear()
-    Close()
+	Clear()
+	Close()
 }
 
 type StoredCopier interface {
-    Copy() StoredMap
+	Copy() StoredMap
 }
 
 type StoredMap interface {
-    Delete(string)
-    Find(string) (interface{}, bool)
-    Insert(string, interface{})
+	Delete(string)
+	Find(string) (interface{}, bool)
+	Insert(string, interface{})
 	Atomic(AtomicFunc)
 	AtomicWait(AtomicFunc)
-    Len() int
-    Each(ForeachFunc)
-    Update(string, UpdateFunc)
+	Len() int
+	Each(ForeachFunc)
+	Update(string, UpdateFunc)
 }
