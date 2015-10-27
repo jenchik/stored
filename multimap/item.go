@@ -32,7 +32,7 @@ func (m *mapItem) do(f func(api.StoredMap) bool) {
 	}
 }
 
-func find(m *mapItem, key string) (value interface{}, found bool) {
+func (m *mapItem) find(key string) (value interface{}, found bool) {
 	if m.child != nil {
 		if value, found = m.child.Find(key); found {
 			return
@@ -46,7 +46,7 @@ func find(m *mapItem, key string) (value interface{}, found bool) {
 }
 
 func (m *mapItem) Find(key string) (value interface{}, found bool) {
-	return find(m, key)
+	return m.find(key)
 }
 
 func (m *mapItem) Key() string {
@@ -58,7 +58,7 @@ func (m *mapItem) SetKey(key string) {
 }
 
 func (m *mapItem) Value() interface{} {
-	v, _ := find(m, m.key)
+	v, _ := m.find(m.key)
 	return v
 }
 
