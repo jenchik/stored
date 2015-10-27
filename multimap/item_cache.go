@@ -49,7 +49,7 @@ func (m *mapItemCache) Value() interface{} {
 }
 
 func (m *mapItemCache) Delete() {
-    delete(m.cache, m.key)
+	delete(m.cache, m.key)
 	m.do(func(cm api.StoredMap) bool {
 		cm.Delete(m.key)
 		return false
@@ -57,7 +57,7 @@ func (m *mapItemCache) Delete() {
 }
 
 func (m *mapItemCache) Update(value interface{}) {
-    m.cache[m.key] = value
+	m.cache[m.key] = value
 	m.do(func(cm api.StoredMap) bool {
 		cm.Insert(m.key, value)
 		return false
