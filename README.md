@@ -37,6 +37,7 @@ ok      github.com/jenchik/stored/hugemap 35.077s
 ```
 
 ##### multimap x4
+- hugemap
 ```
 BenchmarkInsert-4                        1000000              2407 ns/op           0.83 MB/s         151 B/op          1 allocs/op
 BenchmarkAtomicUpdate-4                  1000000              2992 ns/op           0.67 MB/s         158 B/op          3 allocs/op
@@ -48,7 +49,9 @@ BenchmarkAtomicFind-4                    2000000               660 ns/op        
 BenchmarkAtomicWaitFind-4                2000000               602 ns/op           3.32 MB/s          80 B/op          2 allocs/op
 BenchmarkFind-4                          5000000               396 ns/op           5.04 MB/s           0 B/op          0 allocs/op
 BenchmarkDelete-4                        1000000              2433 ns/op           0.82 MB/s          18 B/op          0 allocs/op
-
+```
+- safemap
+```
 BenchmarkUnsafeInsert-4                  1000000              1254 ns/op           1.59 MB/s          26 B/op          1 allocs/op
 BenchmarkUnsafeAtomicUpdate-4            1000000              1137 ns/op           1.76 MB/s         122 B/op          3 allocs/op
 BenchmarkUnsafeAtomicWaitUpdate-4        1000000              1852 ns/op           1.08 MB/s         218 B/op          4 allocs/op
