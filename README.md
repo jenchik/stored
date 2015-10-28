@@ -36,7 +36,7 @@ BenchmarkDelete-4                3000000               618 ns/op           3.23 
 ok      github.com/jenchik/stored/hugemap 35.077s
 ```
 
-##### multimap x4
+##### multimap x4:
 - hugemap
 ```
 BenchmarkInsert-4                        1000000              2407 ns/op           0.83 MB/s         151 B/op          1 allocs/op
