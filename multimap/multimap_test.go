@@ -40,6 +40,20 @@ func testWaitN(sm api.StoredMap, n int) error {
 	return fmt.Errorf("Not equal.") // never
 }
 
+var smForBenchmark api.StoredMap
+
+func init() {
+	smForBenchmark = newTest()
+	err := test.InserterBasic(smForBenchmark, "Benchmark")
+	if err != nil {
+		panic(err.Error())
+	}
+	err = testWaitN(smForBenchmark, test.CntWorks*test.CntItems)
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
 func TestInsertMethods(t *testing.T) {
 	sm := newTest()
 	err := test.InserterBasic(sm, "Insert")
@@ -236,5 +250,212 @@ func TestDeleteMethods(t *testing.T) {
 		if _, found := sm.Find(k); found {
 			t.Fatalf("Key '%s' not deleted!", k)
 		}
+	}
+}
+
+func BenchmarkInsert(b *testing.B) {
+	var k string
+	sm := newTest()
+	l := len(test.UniqKey)
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		k = test.UniqKey[i%l]
+		sm.Insert(k, i)
+	}
+}
+
+func BenchmarkAtomicUpdate(b *testing.B) {
+	var k string
+	var index int
+	sm := newTest()
+	l := len(test.UniqKey)
+	inserter := func(key string) {
+		sm.Atomic(func(m api.Mapper) {
+			index++
+			m.SetKey(key)
+			m.Update(index)
+		})
+	}
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		k = test.UniqKey[i%l]
+		inserter(k)
+	}
+}
+
+func BenchmarkAtomicWaitUpdate(b *testing.B) {
+	var k string
+	var index int
+	sm := newTest()
+	l := len(test.UniqKey)
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		k = test.UniqKey[i%l]
+		sm.AtomicWait(func(m api.Mapper) {
+			index++
+			m.SetKey(k)
+			m.Update(index)
+		})
+	}
+}
+
+func BenchmarkUpdate(b *testing.B) {
+	var k string
+	sm := newTest()
+	l := len(test.UniqKey)
+	updater := func(key string) {
+		sm.Update(key, func(value interface{}, found bool) interface{} {
+			return key
+		})
+	}
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		k = test.UniqKey[i%l]
+		updater(k)
+	}
+}
+
+func BenchmarkAtomicComplex(b *testing.B) {
+	var k string
+	var index, ret int
+	sm := newTest()
+	l := len(test.UniqKey)
+	inserter := func(key string) {
+		sm.Atomic(func(m api.Mapper) {
+			if value, found := m.Find(key); found {
+				ret = value.(int)
+				return
+			}
+			index++
+			ret = index
+			m.SetKey(key)
+			m.Update(ret)
+		})
+	}
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		k = test.UniqKey[i%l]
+		inserter(k)
+	}
+}
+
+func BenchmarkAtomicWaitComplex(b *testing.B) {
+	var k string
+	var index, ret int
+	sm := newTest()
+	l := len(test.UniqKey)
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		k = test.UniqKey[i%l]
+		sm.AtomicWait(func(m api.Mapper) {
+			if value, found := m.Find(k); found {
+				ret = value.(int)
+				return
+			}
+			index++
+			ret = index
+			m.SetKey(k)
+			m.Update(ret)
+		})
+	}
+}
+
+func BenchmarkAtomicFind(b *testing.B) {
+	var k string
+	sm := smForBenchmark
+	l := len(test.UniqKey)
+	finder := func(key string) {
+		sm.Atomic(func(m api.Mapper) {
+			m.Find(key)
+		})
+	}
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		k = test.UniqKey[i%l]
+		finder(k)
+	}
+}
+
+func BenchmarkAtomicWaitFind(b *testing.B) {
+	var k string
+	sm := smForBenchmark
+	l := len(test.UniqKey)
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		k = test.UniqKey[i%l]
+		sm.AtomicWait(func(m api.Mapper) {
+			m.Find(k)
+		})
+	}
+}
+
+func BenchmarkFind(b *testing.B) {
+	var k string
+	sm := smForBenchmark
+	l := len(test.UniqKey)
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		k = test.UniqKey[i%l]
+		sm.Find(k)
+	}
+}
+
+func BenchmarkEachFullCicle(b *testing.B) {
+	b.Skip("TODO")
+	return
+	sm := smForBenchmark
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sm.Each(func(m api.Mapper) {
+			_ = m.Value()
+		})
+	}
+}
+
+func BenchmarkEachShort(b *testing.B) {
+	b.Skip("TODO")
+	return
+	sm := smForBenchmark
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sm.Each(func(m api.Mapper) {
+			_ = m.Value()
+			m.Stop()
+		})
+	}
+}
+
+func BenchmarkDelete(b *testing.B) {
+	var k string
+	sm := smForBenchmark
+	l := len(test.UniqKey)
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		k = test.UniqKey[i%l]
+		sm.Delete(k)
 	}
 }

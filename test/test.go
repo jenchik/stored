@@ -11,12 +11,13 @@ import (
 )
 
 const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const CntWorks = 10
-const CntItems = 10
+const CntWorks = 1000
+const CntItems = 100
 const SizeItem = 5
 
 var Data []map[string]string
 var UniqMap map[string]string
+var UniqKey []string
 
 type Filler func(args ...interface{}) error
 
@@ -46,6 +47,7 @@ func init() {
 	var lock, umap sync.Mutex
 	Data = make([]map[string]string, 0, CntWorks)
 	UniqMap = make(map[string]string, CntWorks*CntItems)
+	UniqKey = make([]string, 0, CntWorks*CntItems)
 	fgen := func(sizeItem int) string {
 		key := RandString(sizeItem)
 		for {
@@ -64,6 +66,7 @@ func init() {
 			umap.Lock()
 			k := fgen(SizeItem)
 		    UniqMap[k] = val
+            UniqKey = append(UniqKey, k)
 			umap.Unlock()
 			m[k] = val
 		}
