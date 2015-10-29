@@ -1,13 +1,10 @@
 package multimap
 
 import (
-	//"fmt"
-	//"math/rand"
 	"testing"
-	//"time"
 
 	"github.com/jenchik/stored/api"
-	"github.com/jenchik/stored/safemap"
+	smap "github.com/jenchik/stored/safemap"
 	"github.com/jenchik/stored/test"
 )
 
@@ -17,19 +14,15 @@ const testUnsafeMultiN = -4
 var smUnsafeForBenchmark api.StoredMap
 
 func init() {
-	smUnsafeForBenchmark = newTest()
+	smUnsafeForBenchmark = newUnsafeTest()
 	err := test.InserterBasic(smUnsafeForBenchmark, "BenchmarkUnsafe")
-	if err != nil {
-		panic(err.Error())
-	}
-	err = testWaitN(smForBenchmark, test.CntWorks*test.CntItems)
 	if err != nil {
 		panic(err.Error())
 	}
 }
 
 func newUnsafeTest() api.StoredMap {
-	return New(testUnsafeMultiN, safemap.New().(api.StoredCopier))
+	return New(testUnsafeMultiN, smap.New().(api.StoredCopier))
 }
 
 func TestUnsafeInsertMethods(t *testing.T) {
@@ -58,208 +51,64 @@ func TestUnsafeDeleteMethods(t *testing.T) {
 }
 
 func BenchmarkUnsafeInsert(b *testing.B) {
-	var k string
 	sm := newUnsafeTest()
-	l := len(test.UniqKey)
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		k = test.UniqKey[i%l]
-		sm.Insert(k, i)
-	}
+	test.BInsert(b, sm)
 }
 
 func BenchmarkUnsafeAtomicUpdate(b *testing.B) {
-	var k string
-	var index int
 	sm := newUnsafeTest()
-	l := len(test.UniqKey)
-	inserter := func(key string) {
-		sm.Atomic(func(m api.Mapper) {
-			index++
-			m.SetKey(key)
-			m.Update(index)
-		})
-	}
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		k = test.UniqKey[i%l]
-		inserter(k)
-	}
+	test.BAtomicUpdate(b, sm)
 }
 
 func BenchmarkUnsafeAtomicWaitUpdate(b *testing.B) {
-	var k string
-	var index int
 	sm := newUnsafeTest()
-	l := len(test.UniqKey)
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		k = test.UniqKey[i%l]
-		sm.AtomicWait(func(m api.Mapper) {
-			index++
-			m.SetKey(k)
-			m.Update(index)
-		})
-	}
+	test.BAtomicWaitUpdate(b, sm)
 }
 
 func BenchmarkUnsafeUpdate(b *testing.B) {
-	var k string
 	sm := newUnsafeTest()
-	l := len(test.UniqKey)
-	updater := func(key string) {
-		sm.Update(key, func(value interface{}, found bool) interface{} {
-			return key
-		})
-	}
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		k = test.UniqKey[i%l]
-		updater(k)
-	}
+	test.BUpdate(b, sm)
 }
 
 func BenchmarkUnsafeAtomicComplex(b *testing.B) {
-	var k string
-	var index, ret int
 	sm := newUnsafeTest()
-	l := len(test.UniqKey)
-	inserter := func(key string) {
-		sm.Atomic(func(m api.Mapper) {
-			if value, found := m.Find(key); found {
-				ret = value.(int)
-				return
-			}
-			index++
-			ret = index
-			m.SetKey(key)
-			m.Update(ret)
-		})
-	}
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		k = test.UniqKey[i%l]
-		inserter(k)
-	}
+	test.BAtomicComplex(b, sm)
 }
 
 func BenchmarkUnsafeAtomicWaitComplex(b *testing.B) {
-	var k string
-	var index, ret int
 	sm := newUnsafeTest()
-	l := len(test.UniqKey)
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		k = test.UniqKey[i%l]
-		sm.AtomicWait(func(m api.Mapper) {
-			if value, found := m.Find(k); found {
-				ret = value.(int)
-				return
-			}
-			index++
-			ret = index
-			m.SetKey(k)
-			m.Update(ret)
-		})
-	}
+	test.BAtomicWaitComplex(b, sm)
 }
 
 func BenchmarkUnsafeAtomicFind(b *testing.B) {
-	var k string
 	sm := smUnsafeForBenchmark
-	l := len(test.UniqKey)
-	finder := func(key string) {
-		sm.Atomic(func(m api.Mapper) {
-			m.Find(key)
-		})
-	}
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		k = test.UniqKey[i%l]
-		finder(k)
-	}
+	test.BAtomicFind(b, sm)
 }
 
 func BenchmarkUnsafeAtomicWaitFind(b *testing.B) {
-	var k string
 	sm := smUnsafeForBenchmark
-	l := len(test.UniqKey)
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		k = test.UniqKey[i%l]
-		sm.AtomicWait(func(m api.Mapper) {
-			m.Find(k)
-		})
-	}
+	test.BAtomicWaitFind(b, sm)
 }
 
 func BenchmarkUnsafeFind(b *testing.B) {
-	var k string
 	sm := smUnsafeForBenchmark
-	l := len(test.UniqKey)
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		k = test.UniqKey[i%l]
-		sm.Find(k)
-	}
+	test.BFind(b, sm)
 }
 
+// TODO
+/*
 func BenchmarkUnsafeEachFullCicle(b *testing.B) {
-	b.Skip("TODO")
-	return
 	sm := smUnsafeForBenchmark
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		sm.Each(func(m api.Mapper) {
-			_ = m.Value()
-		})
-	}
+    test.BEachFullCicle(b, sm)
 }
 
 func BenchmarkUnsafeEachShort(b *testing.B) {
-	b.Skip("TODO")
-	return
 	sm := smUnsafeForBenchmark
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		sm.Each(func(m api.Mapper) {
-			_ = m.Value()
-			m.Stop()
-		})
-	}
+    test.BEachShort(b, sm)
 }
+*/
 
 func BenchmarkUnsafeDelete(b *testing.B) {
-	var k string
 	sm := smUnsafeForBenchmark
-	l := len(test.UniqKey)
-	b.ReportAllocs()
-	b.SetBytes(2)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		k = test.UniqKey[i%l]
-		sm.Delete(k)
-	}
+	test.BDelete(b, sm)
 }

@@ -1,9 +1,8 @@
-package hugemap
+package simplemap
 
 import (
 	"fmt"
 	"math/rand"
-	"sync"
 	"testing"
 
 	"github.com/jenchik/stored/api"
@@ -59,6 +58,11 @@ func TestAtomicMethods(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+	for {
+		if sm.Len() >= test.CntWorks*test.CntItems {
+			break
+		}
+	}
 	if sm.Len() != test.CntWorks*test.CntItems {
 		t.Fatal("Not equal.")
 	}
@@ -106,44 +110,28 @@ func TestAtomicWaitMethods(t *testing.T) {
 	}
 }
 
-func testUpdate(sm api.StoredMap, t *test.Item, f func(string, bool)) {
-	sm.Update(t.K, func(value interface{}, found bool) interface{} {
-		f(t.K, found)
-		return t.V
-	})
-}
-
 func TestUpdateMethods(t *testing.T) {
 	sm := New()
-	wg := new(sync.WaitGroup)
-	wg.Add(len(test.UniqMap))
 	updater := func(args ...interface{}) error {
 		m, ok := args[0].(map[string]string)
 		if !ok {
 			return fmt.Errorf("Get error type 'Map'")
 		}
 		stop := make(chan error, 1)
-		defer close(stop)
-		finger := func(key string, found bool) {
-			if found {
-				select {
-				case stop <- fmt.Errorf("Key '%s' is duplicated.", key):
-				default:
-				}
-			}
-			wg.Done()
-		}
+		c := make(chan test.Item, len(m))
 		for k, v := range m {
 			select {
 			case err := <-stop:
 				return err
-			default:
-				tt := &test.Item{
-					K: k,
-					V: v,
-				}
-				testUpdate(sm, tt, finger)
+			case c <- test.Item{K: k, V: v}:
 			}
+			sm.Update(k, func(value interface{}, found bool) interface{} {
+				t := <-c
+				if found {
+					stop <- fmt.Errorf("Key '%s' is duplicated.", t.K)
+				}
+				return t.V
+			})
 		}
 		return nil
 	}
@@ -154,8 +142,6 @@ func TestUpdateMethods(t *testing.T) {
 	}, len(test.Data), "Update")
 	if err != nil {
 		t.Fatalf(err.Error())
-	} else {
-		wg.Wait()
 	}
 	if sm.Len() != test.CntWorks*test.CntItems {
 		t.Fatal("Not equal.")
@@ -167,29 +153,23 @@ func TestUpdateMethods(t *testing.T) {
 	rndKeys := test.Data[rand.Intn(len(test.Data)-1)]
 	newData := make(map[string]string, len(rndKeys))
 	stop := make(chan error, 1)
-	wg = new(sync.WaitGroup)
-	wg.Add(len(rndKeys))
-	finger := func(key string, found bool) {
-		if !found {
-			select {
-			case stop <- fmt.Errorf("Key '%s' not found.", key):
-			default:
-			}
-		}
-		wg.Done()
-	}
+	c := make(chan test.Item, len(rndKeys))
 	for k, _ := range rndKeys {
+		tt := test.Item{K: k, V: test.RandString(test.SizeItem)}
 		select {
 		case err := <-stop:
 			t.Fatalf(err.Error())
-		default:
-			tt := &test.Item{K: k, V: test.RandString(test.SizeItem)}
-			newData[k] = tt.V
-			testUpdate(sm, tt, finger)
+		case c <- tt:
 		}
+		newData[k] = tt.V
+		sm.Update(k, func(value interface{}, found bool) interface{} {
+			t := <-c
+			if !found {
+				stop <- fmt.Errorf("Key '%s' not found.", t.K)
+			}
+			return t.V
+		})
 	}
-	close(stop)
-	wg.Wait()
 	for k, v := range newData {
 		if val, found := sm.Find(k); !found || val.(string) != v {
 			t.Fatalf("Cannot found!")

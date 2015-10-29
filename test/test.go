@@ -10,20 +10,25 @@ import (
 	"github.com/stefantalpalaru/pool"
 )
 
-const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const CntWorks = 1000
-const CntItems = 100
-const SizeItem = 5
+const (
+	chars         = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	CntWorks      = 1000
+	CntItems      = 100
+	SizeItem      = 5
+	CntBenchWorks = 1000
+)
 
-var Data []map[string]string
-var UniqMap map[string]string
-var UniqKey []string
+var (
+	Data    []map[string]string
+	UniqMap map[string]string
+	UniqKey []string
+)
 
 type Filler func(args ...interface{}) error
 
 type Item struct {
 	K, V string
-    Done chan *Item
+	Done chan *Item
 }
 
 type Worker struct {
@@ -62,11 +67,11 @@ func init() {
 	work := func(args ...interface{}) error {
 		m := make(map[string]string, CntItems)
 		for i := 0; i < CntItems; i++ {
-            val := RandString(SizeItem)
+			val := RandString(SizeItem)
 			umap.Lock()
 			k := fgen(SizeItem)
-		    UniqMap[k] = val
-            UniqKey = append(UniqKey, k)
+			UniqMap[k] = val
+			UniqKey = append(UniqKey, k)
 			umap.Unlock()
 			m[k] = val
 		}
@@ -86,11 +91,11 @@ func DoPools(fillFunc func(*Worker), cntWorks int, prefix string) error {
 	err := make(chan error, cntWorks)
 	p := pool.New(cntWorks)
 	w := &Worker{p, err}
-    defer w.Close()
+	defer w.Close()
 	fillFunc(w)
 	//fmt.Printf("%s status: %#v\n", prefix, p.Status())
 	p.Run()
-    defer p.Stop()
+	defer p.Stop()
 	//fmt.Printf("%s status: %#v\n", prefix, p.Status())
 	for i := 0; i < cntWorks; i++ {
 		p.Wait()
