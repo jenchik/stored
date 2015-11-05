@@ -6,8 +6,9 @@ import (
 
 type mapItem struct {
 	sm   *mMap
+	done bool
+	it   api.Iterator
 	key  string
-	stop bool
 }
 
 var _ api.Mapper = &mapItem{}
@@ -24,6 +25,38 @@ func (m *mapItem) do(f func(api.StoredMap) bool) {
 			return
 		}
 	}
+}
+
+func (m *mapItem) reset() {
+	m.it = nil
+	m.done = false
+	m.key = ""
+}
+
+func (m *mapItem) Next() bool {
+	if m.done == true {
+		return false
+	}
+	if m.it == nil {
+		if m.Len() == 0 {
+			// empty
+			m.done = true
+			return false
+		}
+		m.it = newIterator(m)
+	}
+	if !m.it.Next() {
+		m.done = true
+		return false
+	}
+	return true
+}
+
+func (m *mapItem) Stop() {
+	if !m.done && m.it != nil {
+		m.it.Stop()
+	}
+	m.done = true
 }
 
 func (m *mapItem) Find(key string) (value interface{}, found bool) {
@@ -74,14 +107,10 @@ func (m *mapItem) Unlock() {
 	// TODO
 }
 
-func (m *mapItem) Stop() {
-	m.stop = true
-}
-
 func (m *mapItem) Clear() {
 	// TODO
 }
 
 func (m *mapItem) Close() {
-	// TODO
+	// deprecated
 }

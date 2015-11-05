@@ -8,9 +8,8 @@ import (
 
 func safeAtomic(m *mapItem, f api.AtomicFunc) {
 	defer func() {
-		if m.lock == 1 {
-			m.sm.lock.Unlock()
-		}
+		m.Stop()
+		m.tryUnlock()
 	}()
 	f(m)
 }
@@ -25,11 +24,11 @@ func New() api.StoredMap {
 	return NewN(0, 2000)
 }
 
-func NewN(n, workers int) api.StoredMap {
+func NewN(n, queueSize int) api.StoredMap {
 	sm := &safeMap{
 		store:  make(map[string]interface{}, n),
 		lock:   new(sync.RWMutex),
-		atomic: make(chan api.AtomicFunc, workers),
+		atomic: make(chan api.AtomicFunc, queueSize),
 	}
 	go sm.atomicWorker()
 	return sm
@@ -63,10 +62,16 @@ func (sm *safeMap) Insert(key string, value interface{}) {
 }
 
 func (sm *safeMap) Atomic(f api.AtomicFunc) {
+	if f == nil {
+		return
+	}
 	sm.atomic <- f
 }
 
 func (sm *safeMap) AtomicWait(f api.AtomicFunc) {
+	if f == nil {
+		return
+	}
 	mapper := newMapper(sm)
 	safeAtomic(mapper, f)
 }
@@ -79,11 +84,13 @@ func (sm *safeMap) Len() (n int) {
 }
 
 func (sm *safeMap) Each(f api.ForeachFunc) {
+	if f == nil {
+		return
+	}
 	mapper := newMapperEach(sm)
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
-	for key, _ := range sm.store {
-		mapper.key = key
+	for mapper.key = range sm.store {
 		f(mapper)
 		if mapper.stop {
 			break
@@ -92,6 +99,9 @@ func (sm *safeMap) Each(f api.ForeachFunc) {
 }
 
 func (sm *safeMap) Update(key string, f api.UpdateFunc) {
+	if f == nil {
+		return
+	}
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 	value, found := sm.store[key]

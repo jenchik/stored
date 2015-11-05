@@ -16,6 +16,10 @@ func newMapperEach(sm *safeMap) *mapItemEach {
 	return &mapItemEach{sm: sm}
 }
 
+func (m *mapItemEach) Next() bool {
+	return false
+}
+
 func (m *mapItemEach) Find(key string) (value interface{}, found bool) {
 	value, found = m.sm.store[key]
 	return
@@ -50,6 +54,12 @@ func (m *mapItemEach) Lock() {
 }
 
 func (m *mapItemEach) Unlock() {
+}
+
+func (m *mapItemEach) RLock() {
+}
+
+func (m *mapItemEach) RUnlock() {
 }
 
 func (m *mapItemEach) Stop() {

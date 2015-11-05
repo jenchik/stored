@@ -15,6 +15,7 @@ package safemap
 
 import (
 	"github.com/jenchik/stored/api"
+	"github.com/jenchik/stored/iterator"
 )
 
 type safeMap chan commandData
@@ -56,18 +57,15 @@ func New() api.StoredMap {
 
 func (sm safeMap) run() {
 	store := make(map[string]interface{})
+	mapper := &mapItem{store: store}
 	for command := range sm {
 		switch command.action {
 		case atomic:
-			if command.fatomic != nil {
-				mapper := &mapItem{store: store}
-				command.fatomic(mapper)
-			}
+			mapper.reset()
+			command.fatomic(mapper)
 		case atomicWait:
-			if command.fatomic != nil {
-				mapper := &mapItem{store: store}
-				command.fatomic(mapper)
-			}
+			mapper.reset()
+			command.fatomic(mapper)
 			command.result <- struct{}{}
 		case find:
 			value, found := store[command.key]
@@ -77,11 +75,11 @@ func (sm safeMap) run() {
 		case remove:
 			delete(store, command.key)
 		case each:
-			mapper := &mapItem{store: store}
-			for key, _ := range store {
-				mapper.key = key
+			mapper.reset()
+			mapper.it = iterator.NewDummy()
+			for mapper.key = range store {
 				command.foreach(mapper)
-				if mapper.stop {
+				if mapper.done {
 					break
 				}
 			}
@@ -95,10 +93,16 @@ func (sm safeMap) run() {
 }
 
 func (sm safeMap) Atomic(f api.AtomicFunc) {
+	if f == nil {
+		return
+	}
 	sm <- commandData{action: atomic, fatomic: f}
 }
 
 func (sm safeMap) AtomicWait(f api.AtomicFunc) {
+	if f == nil {
+		return
+	}
 	reply := make(chan interface{})
 	sm <- commandData{action: atomicWait, fatomic: f, result: reply}
 	<-reply
@@ -126,10 +130,16 @@ func (sm safeMap) Len() int {
 }
 
 func (sm safeMap) Update(key string, updater api.UpdateFunc) {
+	if updater == nil {
+		return
+	}
 	sm <- commandData{action: update, key: key, updater: updater}
 }
 
 func (sm safeMap) Each(f api.ForeachFunc) {
+	if f == nil {
+		return
+	}
 	sm <- commandData{action: each, foreach: f}
 }
 

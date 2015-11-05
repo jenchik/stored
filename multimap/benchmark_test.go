@@ -76,16 +76,29 @@ func BenchmarkFind(b *testing.B) {
 	test.BFind(b, sm)
 }
 
-// TODO
-/*
-func BenchmarkEachFullCicle(b *testing.B) {
+func BenchmarkAtomicEachN(b *testing.B) {
 	sm := smForBenchmark
-    test.BEachFullCicle(b, sm)
+	test.BAtomicEachN(b, sm)
 }
 
+// TODO
+/*
+func BenchmarkAtomicEachShort(b *testing.B) {
+	sm := smForBenchmark
+	test.BAtomicEachShort(b, sm)
+}
+*/
+
+func BenchmarkEachN(b *testing.B) {
+	sm := smForBenchmark
+	test.BEachN(b, sm)
+}
+
+// TODO
+/*
 func BenchmarkEachShort(b *testing.B) {
 	sm := smForBenchmark
-    test.BEachShort(b, sm)
+	test.BEachShort(b, sm)
 }
 */
 

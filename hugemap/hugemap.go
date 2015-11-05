@@ -2,6 +2,7 @@ package hugemap
 
 import (
 	"github.com/jenchik/stored/api"
+	"github.com/jenchik/stored/iterator"
 	"sync"
 )
 
@@ -50,9 +51,8 @@ func New() api.StoredMap {
 
 func safeAtomic(m *mapItem, f api.AtomicFunc) {
 	defer func() {
-		if m.lock == 1 {
-			m.sm.lock.Unlock()
-		}
+		m.Stop()
+		m.tryUnlock()
 	}()
 	f(m)
 }
@@ -62,15 +62,11 @@ func (sm *safeMap) run() {
 	for command := range sm.c {
 		switch command.action {
 		case atomic:
-			if command.fatomic != nil {
-				mapper.reset()
-				safeAtomic(mapper, command.fatomic)
-			}
+			mapper.reset()
+			safeAtomic(mapper, command.fatomic)
 		case atomicWait:
-			if command.fatomic != nil {
-				mapper.reset()
-				safeAtomic(mapper, command.fatomic)
-			}
+			mapper.reset()
+			safeAtomic(mapper, command.fatomic)
 			command.result <- struct{}{}
 		case insert:
 			sm.lock.Lock()
@@ -81,14 +77,17 @@ func (sm *safeMap) run() {
 			delete(sm.store, command.key)
 			sm.lock.Unlock()
 		case each:
+			// deprecated
 			mapper.reset()
-			for key, _ := range sm.store {
-				mapper.key = key
+			mapper.it = iterator.NewDummy()
+			mapper.RLock()
+			for mapper.key = range sm.store {
 				command.foreach(mapper)
-				if mapper.stop {
+				if mapper.done {
 					break
 				}
 			}
+			mapper.tryUnlock()
 		case update:
 			value, found := sm.store[command.key]
 			sm.lock.Lock()
@@ -99,10 +98,16 @@ func (sm *safeMap) run() {
 }
 
 func (sm *safeMap) Atomic(f api.AtomicFunc) {
+	if f == nil {
+		return
+	}
 	sm.c <- commandData{action: atomic, fatomic: f}
 }
 
 func (sm *safeMap) AtomicWait(f api.AtomicFunc) {
+	if f == nil {
+		return
+	}
 	reply := make(chan interface{})
 	sm.c <- commandData{action: atomicWait, fatomic: f, result: reply}
 	<-reply
@@ -130,10 +135,16 @@ func (sm *safeMap) Len() int {
 }
 
 func (sm *safeMap) Update(key string, updater api.UpdateFunc) {
+	if updater == nil {
+		return
+	}
 	sm.c <- commandData{action: update, key: key, updater: updater}
 }
 
 func (sm *safeMap) Each(f api.ForeachFunc) {
+	if f == nil {
+		return
+	}
 	sm.c <- commandData{action: each, foreach: f}
 }
 

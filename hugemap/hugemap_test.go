@@ -197,9 +197,19 @@ func TestUpdateMethods(t *testing.T) {
 	}
 }
 
-func TestEachMethods(t *testing.T) {
+func TestAtomicEachFullMethods(t *testing.T) {
 	sm := New()
-	err := test.InserterBasic(sm, "Each")
+	test.TAtomicEachFull(t, sm)
+}
+
+func TestAtomicEachNMethods(t *testing.T) {
+	sm := New()
+	test.TAtomicEachFull(t, sm)
+}
+
+func TestEachFullMethods(t *testing.T) {
+	sm := New()
+	err := test.InserterBasic(sm, "EachFull")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -219,6 +229,39 @@ func TestEachMethods(t *testing.T) {
 		}
 		index++
 		if index == mp.Len() {
+			stop <- nil
+		}
+	})
+	err = <-stop
+	close(stop)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestEachNMethods(t *testing.T) {
+	sm := New()
+	err := test.InserterBasic(sm, "EachN")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	stop := make(chan error, 1)
+	var index int
+	sm.Each(func(mp api.Mapper) {
+		if mp.Len() != len(test.UniqMap) {
+			stop <- fmt.Errorf("Not equal.")
+			mp.Stop()
+			return
+		}
+		if v, found := test.UniqMap[mp.Key()]; !found || mp.Value().(string) != v {
+			stop <- fmt.Errorf("Key '%s' not found.", mp.Key())
+			mp.Stop()
+			return
+		}
+		index++
+		if index == test.CntItemsForEachN {
+			mp.Stop()
 			stop <- nil
 		}
 	})

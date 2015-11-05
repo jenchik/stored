@@ -68,9 +68,19 @@ func BenchmarkFind(b *testing.B) {
 	test.BFind(b, sm)
 }
 
-func BenchmarkEachFullCicle(b *testing.B) {
+func BenchmarkAtomicEachN(b *testing.B) {
 	sm := smForBenchmark
-	test.BEachFullCicle(b, sm)
+	test.BAtomicEachN(b, sm)
+}
+
+func BenchmarkAtomicEachShort(b *testing.B) {
+	sm := smForBenchmark
+	test.BAtomicEachShort(b, sm)
+}
+
+func BenchmarkEachN(b *testing.B) {
+	sm := smForBenchmark
+	test.BEachN(b, sm)
 }
 
 func BenchmarkEachShort(b *testing.B) {
@@ -126,6 +136,11 @@ func BenchmarkThreadsAtomicWaitFind(b *testing.B) {
 func BenchmarkThreadsFind(b *testing.B) {
 	sm := smForBenchmarkThread
 	test.BThreadsFind(b, sm)
+}
+
+func BenchmarkThreadsAtomicEachShort(b *testing.B) {
+	sm := smForBenchmarkThread
+	test.BThreadsAtomicEachShort(b, sm)
 }
 
 func BenchmarkThreadsEachShort(b *testing.B) {

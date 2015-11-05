@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/jenchik/stored/api"
@@ -11,11 +12,12 @@ import (
 )
 
 const (
-	chars         = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-	CntWorks      = 1000
-	CntItems      = 100
-	SizeItem      = 5
-	CntBenchWorks = 1000
+	chars            = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	CntWorks         = 1000
+	CntItems         = 100
+	SizeItem         = 5
+	CntBenchWorks    = 1000
+	CntItemsForEachN = 1000
 )
 
 var (
@@ -155,4 +157,171 @@ func FinderBasic(sm api.StoredMap) error {
 			w.Add(finder, Data[i])
 		}
 	}, len(Data), "Find")
+}
+
+func TAtomicEachFull(t *testing.T, sm api.StoredMap) {
+	err := InserterBasic(sm, "AtomicEachFull")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	time.Sleep(time.Millisecond * 500)
+
+	stop := make(chan error, 1)
+	sm.Atomic(func(mp api.Mapper) {
+		if mp.Len() != len(UniqMap) {
+			stop <- fmt.Errorf("Not equal.")
+			return
+		}
+		var index int
+		var lastKey string
+		for mp.Next() {
+			index++
+			lastKey = mp.Key()
+			if v, found := UniqMap[lastKey]; !found || mp.Value().(string) != v {
+				stop <- fmt.Errorf("Key '%s' not found.", lastKey)
+				return
+			}
+		}
+		if mp.Next() == true {
+			stop <- fmt.Errorf("Next is true after stop.")
+			return
+		}
+		if index != len(UniqMap) {
+			stop <- fmt.Errorf("Invalid iteration.")
+			return
+		}
+		if lastKey != mp.Key() {
+			stop <- fmt.Errorf("Invalid last key.")
+			return
+		}
+		stop <- nil
+	})
+	err = <-stop
+	close(stop)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TAtomicEachN(t *testing.T, sm api.StoredMap) {
+	err := InserterBasic(sm, "AtomicEachN")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	time.Sleep(time.Millisecond * 500)
+
+	stop := make(chan error, 1)
+	sm.Atomic(func(mp api.Mapper) {
+		if mp.Len() != len(UniqMap) {
+			stop <- fmt.Errorf("Not equal.")
+			return
+		}
+		var index int
+		var lastKey string
+		for mp.Next() {
+			index++
+			if v, found := UniqMap[mp.Key()]; !found || mp.Value().(string) != v {
+				stop <- fmt.Errorf("Key '%s' not found.", mp.Key())
+				return
+			}
+			if index == CntItemsForEachN {
+				mp.Stop()
+				lastKey = mp.Key()
+			}
+		}
+		if mp.Next() == true {
+			stop <- fmt.Errorf("Next is true after stop.")
+			return
+		}
+		if index != CntItemsForEachN {
+			stop <- fmt.Errorf("Invalid iteration.")
+			return
+		}
+		if lastKey != mp.Key() {
+			stop <- fmt.Errorf("Invalid last key.")
+			return
+		}
+		stop <- nil
+	})
+	err = <-stop
+	close(stop)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TEachFull(t *testing.T, sm api.StoredMap) {
+	err := InserterBasic(sm, "EachFull")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	time.Sleep(time.Millisecond * 500)
+
+	stop := make(chan error, 1)
+	var index int
+	sm.Each(func(mp api.Mapper) {
+		if mp.Len() != len(UniqMap) {
+			stop <- fmt.Errorf("Not equal.")
+			mp.Stop()
+			return
+		}
+		if v, found := UniqMap[mp.Key()]; !found || mp.Value().(string) != v {
+			stop <- fmt.Errorf("Key '%s' not found.", mp.Key())
+			mp.Stop()
+			return
+		}
+		index++
+		if index == mp.Len() {
+			stop <- nil
+		}
+	})
+	err = <-stop
+	close(stop)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	if index != len(UniqKey) {
+		t.Fatalf("Invalid iteration.")
+	}
+}
+
+func TEachN(t *testing.T, sm api.StoredMap) {
+	err := InserterBasic(sm, "EachN")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	time.Sleep(time.Millisecond * 500)
+
+	stop := make(chan error, 1)
+	var index int
+	sm.Each(func(mp api.Mapper) {
+		if mp.Len() != len(UniqMap) {
+			stop <- fmt.Errorf("Not equal.")
+			mp.Stop()
+			return
+		}
+		if v, found := UniqMap[mp.Key()]; !found || mp.Value().(string) != v {
+			stop <- fmt.Errorf("Key '%s' not found.", mp.Key())
+			mp.Stop()
+			return
+		}
+		index++
+		if index == CntItemsForEachN {
+			mp.Stop()
+			stop <- nil
+			return
+		}
+	})
+	err = <-stop
+	close(stop)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	if index != CntItemsForEachN {
+		t.Fatalf("Invalid iteration.")
+	}
 }

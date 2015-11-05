@@ -161,13 +161,52 @@ func BFind(b *testing.B, sm api.StoredMap) {
 	}
 }
 
-func BEachFullCicle(b *testing.B, sm api.StoredMap) {
+func BAtomicEachN(b *testing.B, sm api.StoredMap) {
+	b.N = 1
 	b.ReportAllocs()
 	b.SetBytes(2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		sm.Atomic(func(mp api.Mapper) {
+			var index int
+			for mp.Next() {
+				_ = mp.Value().(string)
+				index++
+				if index == CntItemsForEachN {
+					mp.Stop()
+				}
+			}
+		})
+	}
+}
+
+func BAtomicEachShort(b *testing.B, sm api.StoredMap) {
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sm.Atomic(func(mp api.Mapper) {
+			for mp.Next() {
+				_ = mp.Value().(string)
+				mp.Stop()
+			}
+		})
+	}
+}
+
+func BEachN(b *testing.B, sm api.StoredMap) {
+	b.N = 1
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var index int
 		sm.Each(func(m api.Mapper) {
 			_ = m.Value().(string)
+			index++
+			if index == CntItemsForEachN {
+				m.Stop()
+			}
 		})
 	}
 }
@@ -392,6 +431,25 @@ func BThreadsFind(b *testing.B, sm api.StoredMap) {
 				_ = value.(string)
 			}
 			i++
+		}
+	})
+}
+
+func BThreadsAtomicEachShort(b *testing.B, sm api.StoredMap) {
+	b.SetParallelism(CntBenchWorks)
+	b.ReportAllocs()
+	b.SetBytes(2)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		var i int
+		for pb.Next() {
+			sm.Atomic(func(m api.Mapper) {
+				for m.Next() {
+					_ = m.Value().(string)
+					m.Stop()
+					i++
+				}
+			})
 		}
 	})
 }

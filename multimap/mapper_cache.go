@@ -8,7 +8,7 @@ type mapItemCache struct {
 	sm    *mMap
 	key   string
 	stop  bool
-	cache map[string]interface{}
+	cache map[string]struct{}
 }
 
 var _ api.Mapper = &mapItemCache{}
@@ -16,12 +16,12 @@ var _ api.Mapper = &mapItemCache{}
 func newMapperCache(sm *mMap) *mapItemCache {
 	return &mapItemCache{
 		sm:    sm,
-		cache: make(map[string]interface{}, sm.Len()),
+		cache: make(map[string]struct{}, sm.Len()),
 	}
 }
 
 func (m *mapItemCache) find(key string) (value interface{}, found bool) {
-	value, found = m.cache[key]
+	value, found = m.sm.Find(key)
 	return
 }
 
@@ -29,6 +29,14 @@ func (m *mapItemCache) do(f func(api.StoredMap) bool) {
 	for i, _ := range m.sm.maps {
 		f(m.sm.maps[i])
 	}
+}
+
+func (m *mapItemCache) Next() bool {
+	return false
+}
+
+func (m *mapItemCache) Stop() {
+	m.stop = true
 }
 
 func (m *mapItemCache) Find(key string) (value interface{}, found bool) {
@@ -57,7 +65,6 @@ func (m *mapItemCache) Delete() {
 }
 
 func (m *mapItemCache) Update(value interface{}) {
-	m.cache[m.key] = value
 	m.do(func(cm api.StoredMap) bool {
 		cm.Insert(m.key, value)
 		return false
@@ -76,14 +83,10 @@ func (m *mapItemCache) Unlock() {
 	// TODO
 }
 
-func (m *mapItemCache) Stop() {
-	m.stop = true
-}
-
 func (m *mapItemCache) Clear() {
 	// TODO
 }
 
 func (m *mapItemCache) Close() {
-	// TODO
+	// deprecated
 }

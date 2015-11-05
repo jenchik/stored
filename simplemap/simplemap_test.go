@@ -177,36 +177,24 @@ func TestUpdateMethods(t *testing.T) {
 	}
 }
 
-func TestEachMethods(t *testing.T) {
+func TestAtomicEachFullMethods(t *testing.T) {
 	sm := New()
-	err := test.InserterBasic(sm, "Each")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	test.TAtomicEachFull(t, sm)
+}
 
-	stop := make(chan error, 1)
-	var index int
-	sm.Each(func(mp api.Mapper) {
-		if mp.Len() != len(test.UniqMap) {
-			stop <- fmt.Errorf("Not equal.")
-			mp.Stop()
-			return
-		}
-		if v, found := test.UniqMap[mp.Key()]; !found || mp.Value().(string) != v {
-			stop <- fmt.Errorf("Key '%s' not found.", mp.Key())
-			mp.Stop()
-			return
-		}
-		index++
-		if index == mp.Len() {
-			stop <- nil
-		}
-	})
-	err = <-stop
-	close(stop)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+func TestAtomicEachNMethods(t *testing.T) {
+	sm := New()
+	test.TAtomicEachN(t, sm)
+}
+
+func TestEachFullMethods(t *testing.T) {
+	sm := New()
+	test.TEachFull(t, sm)
+}
+
+func TestEachNMethods(t *testing.T) {
+	sm := New()
+	test.TEachN(t, sm)
 }
 
 func TestDeleteMethods(t *testing.T) {
