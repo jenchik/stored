@@ -111,7 +111,7 @@ func (c *Cache) GC() {
 			m.Delete()
 			return
 		}
-		v := m.Value().(item)
+		v := m.Value().(*item)
 		if time.Now().Unix() > v.ttl {
 			c.cntGcHit++
 			m.Delete()
